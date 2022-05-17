@@ -1,10 +1,11 @@
 #include "publisher_zmq.h"
 
 #include <cstdio>
+#include <chrono>
+#include <iostream>
 #include <optional>
 #include <string>
 #include <sstream>
-#include <thread>
 #include <utility>
 #include <vector>
 
@@ -39,10 +40,7 @@ std::pair<std::string, std::optional<int>> ArrayIndex(const std::string& str) {
   return {str.substr(0, bracket), index};
 }
 
-StatePublisherZMQ::StatePublisherZMQ() :
-    context_(1),
-    publisher_(context_, zmq::socket_type::pub) {
-  publisher_.bind("tcp://*:5556");
+StatePublisherZMQ::StatePublisherZMQ() : context_(1) {
 }
 
 StatePublisherZMQ::~StatePublisherZMQ() {
@@ -51,6 +49,12 @@ StatePublisherZMQ::~StatePublisherZMQ() {
 void StatePublisherZMQ::setEnabled(bool enabled)
 {
   enabled_ = enabled;
+  if (enabled_) {
+    socket_ = zmq::socket_t(context_, zmq::socket_type::pub);
+    socket_.bind("tcp://*:5556");
+  } else {
+    socket_.close();
+  }
 }
 
 nlohmann::json *GetItem(nlohmann::json& item, const std::string& full_name) {
@@ -77,25 +81,35 @@ nlohmann::json *GetItem(nlohmann::json& item, const std::string& full_name) {
 }
 
 void StatePublisherZMQ::PublishData(double current_time) {
-  if (enabled_) {
-    nlohmann::json root;
-    for (const auto& [full_name, data] : _datamap->numeric) {
-      nlohmann::json *item = &root;
+  if (!enabled_) {
+    return;
+  }
 
-      auto tokens = Tokenize(full_name, '/');
-      for (auto& token : tokens) {
-        item = GetItem(*item, token);
-      }
+  using namespace std::chrono_literals;
+  auto now = std::chrono::system_clock::now();
+  auto delta = now - last_send_time_;
+  if (delta < 17ms) {
+    return;
+  }
+  last_send_time_ = now;
 
-      std::optional<double> value = data.getYfromX(current_time);
-      if (value) {
-        *item = *value;
-      } else {
-        *item = nullptr;
-      }
+  nlohmann::json root;
+  for (const auto& [full_name, data] : _datamap->numeric) {
+    nlohmann::json *item = &root;
+
+    auto tokens = Tokenize(full_name, '/');
+    for (auto& token : tokens) {
+      item = GetItem(*item, token);
     }
 
-    zmq::message_t msg(root.dump());
-    publisher_.send(msg, zmq::send_flags::none);
+    std::optional<double> value = data.getYfromX(current_time);
+    if (value) {
+      *item = *value;
+    } else {
+      *item = nullptr;
+    }
   }
+
+  zmq::message_t msg(root.dump());
+  socket_.send(msg, zmq::send_flags::none);
 }

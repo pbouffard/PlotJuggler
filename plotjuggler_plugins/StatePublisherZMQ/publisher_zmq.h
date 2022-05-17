@@ -1,8 +1,7 @@
 #ifndef STATE_PUBLISHER_ZMQ_H
 #define STATE_PUBLISHER_ZMQ_H
 
-#include <atomic>
-#include <thread>
+#include <chrono>
 
 #include <QObject>
 #include <QtPlugin>
@@ -38,11 +37,12 @@ public slots:
   virtual void setEnabled(bool enabled) override;
 
 private:
-  bool enabled_ = false;
-  zmq::context_t context_;
-  zmq::socket_t publisher_;
-
   void PublishData(double current_time);
+
+  bool enabled_ = false;
+  std::chrono::time_point<std::chrono::system_clock> last_send_time_;
+  zmq::context_t context_;
+  zmq::socket_t socket_;
 };
 
 #endif  // STATE_PUBLISHER_ZMQ_H
