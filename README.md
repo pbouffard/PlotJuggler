@@ -91,6 +91,16 @@ Install the debian packages using:
 
 ## How to build
 
+### On Ubuntu
+
+On Ubuntu PlotJuggler dependencies can be fetched and executable built + installed by running the setup script:
+
+```
+./setup.sh
+```
+
+### Other Platforms
+
 Clone the repository as usual:
 
     git clone https://github.com/facontidavide/PlotJuggler.git
