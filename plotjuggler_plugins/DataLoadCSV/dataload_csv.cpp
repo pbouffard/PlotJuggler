@@ -306,6 +306,13 @@ int DataLoadCSV::launchDialog(QFile& file, std::vector<std::string>* column_name
   // parse the header once and launch the dialog
   parseHeader(file, *column_names);
 
+  int index = settings.value("DataLoadCSV.timeIndex", -1).toInt();
+  if (index >= 0)
+  {
+    _ui->listWidgetSeries->setCurrentRow(settings.value("DataLoadCSV.timeIndex", 0).toInt(),
+                                         QItemSelectionModel::Select);
+  }
+
   int res = _dialog->exec();
 
   settings.setValue("DataLoadCSV.geometry", _dialog->saveGeometry());
@@ -315,20 +322,24 @@ int DataLoadCSV::launchDialog(QFile& file, std::vector<std::string>* column_name
 
   if (res == QDialog::Rejected)
   {
+    settings.setValue("DataLoadCSV.timeIndex", TIME_INDEX_NOT_DEFINED);
     return TIME_INDEX_NOT_DEFINED;
   }
 
   if (_ui->radioButtonIndex->isChecked())
   {
+    settings.setValue("DataLoadCSV.timeIndex", TIME_INDEX_GENERATED);
     return TIME_INDEX_GENERATED;
   }
 
   QModelIndexList indexes = _ui->listWidgetSeries->selectionModel()->selectedIndexes();
   if (indexes.size() == 1)
   {
+    settings.setValue("DataLoadCSV.timeIndex", indexes.front().row());
     return indexes.front().row();
   }
 
+  settings.setValue("DataLoadCSV.timeIndex", TIME_INDEX_NOT_DEFINED);
   return TIME_INDEX_NOT_DEFINED;
 }
 
