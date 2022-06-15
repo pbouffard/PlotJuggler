@@ -117,6 +117,7 @@ private:
   std::map<QString, StatePublisherPtr> _state_publisher;
   std::map<QString, DataStreamerPtr> _data_streamer;
   std::map<QString, ToolboxPluginPtr> _toolboxes;
+  std::map<QString, QDateTime> _log_last_modified;
 
   QString _default_streamer;
 
@@ -146,6 +147,7 @@ private:
   MonitoredValue _time_offset;
 
   QTimer* _replot_timer;
+  QTimer* _log_monitor_timer;
   QTimer* _publish_timer;
   PJ::DelayedCallback _tracker_delay;
 
@@ -211,6 +213,8 @@ private:
   void updateDerivedSeries();
 
   void updateReactivePlots();
+
+  void checkLogs();
 
 signals:
   void dataSourceRemoved(const std::string& name);
