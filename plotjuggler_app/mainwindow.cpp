@@ -241,6 +241,11 @@ MainWindow::MainWindow(const QCommandLineParser& commandline_parser, QWidget* pa
   connect(_replot_timer, &QTimer::timeout, this,
           [this]() { updateDataAndReplot(false); });
 
+  _log_monitor_timer = new QTimer(this);
+  _log_monitor_timer->setInterval(500);
+  connect(_log_monitor_timer, &QTimer::timeout, [this] { checkLogs(); });
+  _log_monitor_timer->start();
+
   _publish_timer = new QTimer(this);
   _publish_timer->setInterval(20);
   connect(_publish_timer, &QTimer::timeout, this, &MainWindow::onPlaybackLoop);
@@ -2538,6 +2543,7 @@ void MainWindow::on_pushButtonTimeTracker_pressed()
 void MainWindow::closeEvent(QCloseEvent* event)
 {
   _replot_timer->stop();
+  _log_monitor_timer->stop();
   _publish_timer->stop();
 
   if (_active_streamer_plugin)
@@ -2606,6 +2612,27 @@ void MainWindow::onRefreshCustomPlot(const std::string& plot_name)
   {
     QMessageBox::critical(this, "error",
                           "Failed to refresh data : " + QString::fromStdString(e.what()));
+  }
+}
+
+void MainWindow::checkLogs()
+{
+  bool refresh_plots = false;
+
+  for (auto& info : _loaded_datafiles) {
+    QDateTime last_modified = QFileInfo(info.filename).lastModified();
+
+    auto it = _log_last_modified.find(info.filename);
+    if (it != _log_last_modified.end() && last_modified > it->second) {
+      loadDataFromFile(info);
+      refresh_plots = true;
+    }
+
+    _log_last_modified[info.filename] = last_modified;
+  }
+
+  if (refresh_plots) {
+    forEachWidget([&](PlotWidget* plot) { plot->zoomOut(false); });
   }
 }
 
