@@ -127,7 +127,7 @@ const std::vector<const char*>& DataLoadCSV::compatibleFileExtensions() const
   return _extensions;
 }
 
-void DataLoadCSV::parseHeader(QFile& file, std::vector<std::string>& column_names)
+int DataLoadCSV::parseHeader(QFile& file, std::vector<std::string>& column_names)
 {
   file.open(QFile::ReadOnly);
 
@@ -137,7 +137,16 @@ void DataLoadCSV::parseHeader(QFile& file, std::vector<std::string>& column_name
   QTextStream inA(&file);
   // The first line should contain the header. If it contains a number, we will
   // apply a name ourselves
-  QString first_line = inA.readLine();
+  int skipped_lines = 0;
+  QString first_line;
+  while (true) {
+    first_line = inA.readLine();
+    if (first_line.at(0) == '#') {
+      skipped_lines++;
+    } else {
+      break;
+    }
+  }
 
   QString preview_lines = first_line + "\n";
 
@@ -242,6 +251,8 @@ void DataLoadCSV::parseHeader(QFile& file, std::vector<std::string>& column_name
   _ui->rawText->setPlainText(preview_lines);
 
   file.close();
+
+  return skipped_lines;
 }
 
 int DataLoadCSV::launchDialog(QFile& file, std::vector<std::string>* column_names)
@@ -307,7 +318,7 @@ int DataLoadCSV::launchDialog(QFile& file, std::vector<std::string>* column_name
                    });
 
   // parse the header once and launch the dialog
-  parseHeader(file, *column_names);
+  int skipped_lines = parseHeader(file, *column_names);
 
   QString previous_index = settings.value("DataLoadCSV.timeIndex", "").toString();
   if (previous_index.isEmpty() == false)
@@ -366,13 +377,15 @@ bool DataLoadCSV::readDataFromFile(FileLoadInfo* info, PlotDataMapRef& plot_data
 
   int time_index = TIME_INDEX_NOT_DEFINED;
 
+  int skipped_lines = 0;
+
   if (!use_provided_configuration)
   {
     time_index = launchDialog(file, &column_names);
   }
   else
   {
-    parseHeader(file, column_names);
+    skipped_lines = parseHeader(file, column_names);
     if (_default_time_axis == "__TIME_INDEX_GENERATED__")
     {
       time_index = TIME_INDEX_GENERATED;
@@ -400,7 +413,7 @@ bool DataLoadCSV::readDataFromFile(FileLoadInfo* info, PlotDataMapRef& plot_data
   int linecount = 0;
 
   // count the number of lines first
-  int tot_lines = 0;
+  int tot_lines = -skipped_lines;
   {
     file.open(QFile::ReadOnly);
     QTextStream in(&file);
@@ -463,8 +476,11 @@ bool DataLoadCSV::readDataFromFile(FileLoadInfo* info, PlotDataMapRef& plot_data
 
   file.open(QFile::ReadOnly);
   QTextStream in(&file);
-  // remove first line (header)
-  in.readLine();
+  // remove first line (header) + any top of file comments
+  for (int i = 0; i < skipped_lines + 1; i++)
+  {
+    in.readLine();
+  }
 
   QStringList string_items;
 

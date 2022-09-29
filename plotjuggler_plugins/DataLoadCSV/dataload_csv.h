@@ -33,7 +33,7 @@ public:
   virtual bool xmlLoadState(const QDomElement& parent_element) override;
 
 protected:
-  void parseHeader(QFile& file, std::vector<std::string>& ordered_names);
+  int parseHeader(QFile& file, std::vector<std::string>& ordered_names);
 
   int launchDialog(QFile& file, std::vector<std::string>* ordered_names);
 
