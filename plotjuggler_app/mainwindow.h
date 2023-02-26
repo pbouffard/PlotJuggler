@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
@@ -94,6 +100,8 @@ public slots:
 
   void onPlaybackLoop();
 
+  void linkedZoomOut();
+
 private:
   Ui::MainWindow* ui;
 
@@ -121,7 +129,7 @@ private:
 
   QString _default_streamer;
 
-  std::shared_ptr<MessageParserFactory> _message_parser_factory;
+  ParserFactories _parser_factories;
 
   std::shared_ptr<DataStreamer> _active_streamer_plugin;
 
@@ -216,6 +224,10 @@ private:
 
   void checkLogs();
 
+  void dragEnterEvent(QDragEnterEvent* event);
+
+  void dropEvent(QDropEvent* event);
+
 signals:
   void dataSourceRemoved(const std::string& name);
   void dataSourceUpdated(const std::string& name);
@@ -272,6 +284,8 @@ private slots:
   void on_pushButtonLoadLayout_clicked();
   void on_pushButtonSaveLayout_clicked();
   void on_pushButtonLoadDatafile_clicked();
+
+  void on_actionColorMap_Editor_triggered();
 
 private:
   QStringList readAllCurvesFromXML(QDomElement root_node);

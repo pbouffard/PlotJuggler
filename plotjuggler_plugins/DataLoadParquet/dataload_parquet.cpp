@@ -12,22 +12,9 @@
 DataLoadParquet::DataLoadParquet()
 {
   ui = new Ui::DialogParquet();
-}
+  _dialog = new QDialog();
 
-DataLoadParquet::~DataLoadParquet()
-{
-  delete ui;
-}
-
-const std::vector<const char*>& DataLoadParquet::compatibleFileExtensions() const
-{
-  static std::vector<const char*> extensions = {"parquet"};
-  return extensions;
-}
-
-void DataLoadParquet::setupDialog(QDialog* dialog)
-{
-  ui->setupUi(dialog);
+  ui->setupUi(_dialog);
 
   connect(ui->checkBoxDateFormat, &QCheckBox::toggled, this,
           [=](bool checked){
@@ -41,7 +28,7 @@ void DataLoadParquet::setupDialog(QDialog* dialog)
 
   connect(ui->listWidgetSeries, &QListWidget::doubleClicked, this,
           [=](const QModelIndex &) {
-            dialog->accept();
+            _dialog->accept();
           });
 
   connect(ui->radioButtonIndex, &QRadioButton::toggled, this,
@@ -65,9 +52,22 @@ void DataLoadParquet::setupDialog(QDialog* dialog)
   }
 }
 
+DataLoadParquet::~DataLoadParquet()
+{
+  delete ui;
+}
+
+const std::vector<const char*>& DataLoadParquet::compatibleFileExtensions() const
+{
+  static std::vector<const char*> extensions = {"parquet"};
+  return extensions;
+}
+
+
 bool DataLoadParquet::readDataFromFile(FileLoadInfo* info, PlotDataMapRef& plot_data)
 {
   using parquet::Type;
+  using parquet::ConvertedType;
 
   parquet_reader_ = parquet::ParquetFileReader::OpenFile(info->filename.toStdString());
 
@@ -80,17 +80,18 @@ bool DataLoadParquet::readDataFromFile(FileLoadInfo* info, PlotDataMapRef& plot_
   const auto schema = file_metadata->schema();
   const size_t num_columns = file_metadata->num_columns();
 
-  auto dialog = new QDialog();
-  setupDialog(dialog);
-
   std::vector<parquet::Type::type> column_type;
+  std::vector<parquet::ConvertedType::type> converted_column_type;
   std::vector<bool> valid_column( num_columns, true );
 
   for( size_t col=0; col<num_columns; col++ )
   {
     auto column =  schema->Column(col);
     auto type = column->physical_type();
+    auto converted_type = column->converted_type();
+
     column_type.push_back( type );
+    converted_column_type.push_back( converted_type );
 
     valid_column[col] = (type == Type::BOOLEAN ||
                          type == Type::INT32 ||
@@ -118,7 +119,7 @@ bool DataLoadParquet::readDataFromFile(FileLoadInfo* info, PlotDataMapRef& plot_
     }
   }
 
-  int ret = dialog->exec();
+  int ret = _dialog->exec();
   if (ret != QDialog::Accepted)
   {
     return false;
@@ -140,8 +141,6 @@ bool DataLoadParquet::readDataFromFile(FileLoadInfo* info, PlotDataMapRef& plot_
   settings.setValue("DataLoadParquet::radioIndexChecked", ui->radioButtonIndex->isChecked());
   settings.setValue("DataLoadParquet::parseDateTime", ui->checkBoxDateFormat->isChecked());
   settings.setValue("DataLoadParquet::dateFromat", ui->lineEditDateFormat->text());
-
-  dialog->deleteLater();
 
   //-----------------------------
   // Time to parse
@@ -178,6 +177,7 @@ bool DataLoadParquet::readDataFromFile(FileLoadInfo* info, PlotDataMapRef& plot_
         continue;
       }
       auto type = column_type[col];
+      auto converted_type = converted_column_type[col];
 
       switch(type)
       {
@@ -187,16 +187,87 @@ bool DataLoadParquet::readDataFromFile(FileLoadInfo* info, PlotDataMapRef& plot_
           row_values[col] = static_cast<double>(tmp);
           break;
         }
-        case Type::INT32: {
-          int32_t tmp;
-          os >> tmp;
-          row_values[col] = static_cast<double>(tmp);
-          break;
-        }
+        case Type::INT32: 
         case Type::INT64: {
-          int64_t tmp;
-          os >> tmp;
-          row_values[col] = static_cast<double>(tmp);
+          switch(converted_type)
+          {
+            case ConvertedType::INT_8:
+            {
+              int8_t tmp;
+              os >> tmp;
+              row_values[col] = static_cast<double>(tmp);
+              break;
+            }
+            case ConvertedType::INT_16:
+            {
+              int16_t tmp;
+              os >> tmp;
+              row_values[col] = static_cast<double>(tmp);
+              break;
+            }
+            case ConvertedType::INT_32:
+            {
+              int32_t tmp;
+              os >> tmp;
+              row_values[col] = static_cast<double>(tmp);
+              break;
+            }
+            case ConvertedType::INT_64:
+            {
+              int64_t tmp;
+              os >> tmp;
+              row_values[col] = static_cast<double>(tmp);
+              break;
+            }
+            case ConvertedType::UINT_8:
+            {
+              uint8_t tmp;
+              os >> tmp;
+              row_values[col] = static_cast<double>(tmp);
+              break;
+            }
+            case ConvertedType::UINT_16:
+            {
+              uint16_t tmp;
+              os >> tmp;
+              row_values[col] = static_cast<double>(tmp);
+              break;
+            }
+            case ConvertedType::UINT_32:
+            {
+              uint32_t tmp;
+              os >> tmp;
+              row_values[col] = static_cast<double>(tmp);
+              break;
+            }
+            case ConvertedType::UINT_64:
+            {
+              uint64_t tmp;
+              os >> tmp;
+              row_values[col] = static_cast<double>(tmp);
+              break;
+            }
+            default: {
+              //Fallback in case no converted type is provided
+              switch(type)
+              {
+                case Type::INT32: 
+                {
+                  int32_t tmp;
+                  os >> tmp;
+                  row_values[col] = static_cast<double>(tmp);
+                  break;
+                }
+                case Type::INT64:
+                {
+                  int64_t tmp;
+                  os >> tmp;
+                  row_values[col] = static_cast<double>(tmp);
+                  break;
+                }
+              }
+            }
+          }
           break;
         }
         case Type::FLOAT: {
@@ -219,14 +290,12 @@ bool DataLoadParquet::readDataFromFile(FileLoadInfo* info, PlotDataMapRef& plot_
     double timestamp = timestamp_column >= 0 ? row_values[timestamp_column] : row;
     row++;
 
-    for(int col=0; col<num_columns; col++)
+    for(size_t col=0; col<num_columns; col++)
     {
       if( !valid_column[col] )
       {
         continue;
       }
-      auto column =  schema->Column(col);
-      const std::string& name = column->name();
 
       if( valid_column[col] )
       {

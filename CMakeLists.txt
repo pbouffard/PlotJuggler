@@ -1,16 +1,17 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.10.2)
 
-PROJECT(plotjuggler)
+PROJECT(plotjuggler LANGUAGES C CXX VERSION 3.6.1)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}  "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
+
 add_definitions(
-    -DPJ_MAJOR_VERSION="3"
-    -DPJ_MINOR_VERSION="4"
-    -DPJ_PATCH_VERSION="4" )
+    -DPJ_MAJOR_VERSION=${PROJECT_VERSION_MAJOR}
+    -DPJ_MINOR_VERSION=${PROJECT_VERSION_MINOR}
+    -DPJ_PATCH_VERSION=${PROJECT_VERSION_PATCH} )
 
 # You can add some command line arguments at compilation time
 # Use _0x3b_ instead of semicolon
@@ -19,6 +20,7 @@ add_definitions(
 #add_definitions( -DPJ_DEFAULT_ARGS="${PJ_DEFAULT_ARGS}")
 
 option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
+option(BASE_AS_SHARED "Build the base library as a shared libary" OFF)
 
 IF (NOT WIN32 AND ENABLE_ASAN)
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
@@ -29,6 +31,16 @@ include_directories( plotjuggler_base/include )
 include_directories( plotjuggler_base/src )
 
 add_definitions( -DFMT_HEADER_ONLY )
+
+if (EXISTS ${CMAKE_BINARY_DIR}/conanbuildinfo.txt)
+    set(BUILDING_WITH_CONAN ON)
+    message(STATUS "BUILDING_WITH_CONAN")
+endif()
+
+if(VCPKG_TOOLCHAIN)
+    set(BUILDING_WITH_VCPKG ON)
+    message(STATUS "BUILDING_WITH_VCPKG")
+endif()
 
 # http://answers.ros.org/question/230877/optionally-build-a-package-with-catkin/
 if( CATKIN_DEVEL_PREFIX OR catkin_FOUND OR CATKIN_BUILD_BINARY_PACKAGE)
@@ -145,9 +157,26 @@ include_directories(
     ./3rdparty/qwt/src
     ./3rdparty/sol
     ./3rdparty/lua-5.4.3/src
+    ./3rdparty/QCodeEditor/include
+    ./3rdparty/lz4
 )
 
 #########################  BASE library  ####################################
+
+set(PLOTJUGGLER_BASE_SRC
+    plotjuggler_base/src/plotdata.cpp
+    plotjuggler_base/src/datastreamer_base.cpp
+    plotjuggler_base/src/transform_function.cpp
+    plotjuggler_base/src/plotwidget_base.cpp
+    plotjuggler_base/src/plotzoomer.cpp
+    plotjuggler_base/src/plotmagnifier.cpp
+    plotjuggler_base/src/plotlegend.cpp
+    plotjuggler_base/src/plotpanner.cpp
+    plotjuggler_base/src/timeseries_qwt.cpp
+    plotjuggler_base/src/reactive_function.cpp
+    plotjuggler_base/src/special_messages.cpp
+)
+
 qt5_wrap_cpp(PLOTJUGGLER_BASE_MOCS
   plotjuggler_base/include/PlotJuggler/dataloader_base.h
   plotjuggler_base/include/PlotJuggler/statepublisher_base.h
@@ -155,23 +184,27 @@ qt5_wrap_cpp(PLOTJUGGLER_BASE_MOCS
   plotjuggler_base/include/PlotJuggler/datastreamer_base.h
   plotjuggler_base/include/PlotJuggler/transform_function.h
   plotjuggler_base/include/PlotJuggler/plotwidget_base.h
-  plotjuggler_base/include/PlotJuggler/lua_highlighter.h
 )
 
-add_library( plotjuggler_base
-    ${PLOTJUGGLER_BASE_MOCS}
-     plotjuggler_base/src/plotdata.cpp
-     plotjuggler_base/src/datastreamer_base.cpp
-     plotjuggler_base/src/transform_function.cpp
-     plotjuggler_base/src/plotwidget_base.cpp
-     plotjuggler_base/src/plotzoomer.cpp
-     plotjuggler_base/src/plotmagnifier.cpp
-     plotjuggler_base/src/plotlegend.cpp
-     plotjuggler_base/src/timeseries_qwt.cpp
-     plotjuggler_base/src/reactive_function.cpp
-     plotjuggler_base/src/lua_highlighter.cpp
-     )
+if (BASE_AS_SHARED)
+    add_library(plotjuggler_base SHARED
+        ${PLOTJUGGLER_BASE_SRC}
+        ${PLOTJUGGLER_BASE_MOCS}
+        )
+    target_link_libraries(plotjuggler_base PRIVATE lua_objects plotjuggler_qwt_objects)
+else()
+    add_library(plotjuggler_base STATIC
+        ${PLOTJUGGLER_BASE_SRC}
+        ${PLOTJUGGLER_BASE_MOCS}
+        )
+endif()
+
 # target_link_libraries(plotjuggler_base plotjuggler_qwt)
+
+target_include_directories(plotjuggler_base INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:include>
+)
 
 #########################  INSTALL  ####################################
 
@@ -189,7 +222,7 @@ elseif(COMPILING_WITH_AMENT)
     set(PJ_PLUGIN_INSTALL_DIRECTORY lib/${PROJECT_NAME} )
 
     ament_export_targets(
-        export_plotjuggler_base
+        ${PROJECT_NAME}Targets
         export_plotjuggler_qwt
         HAS_LIBRARY_TARGET)
     ament_package()
@@ -211,57 +244,25 @@ install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/PlotJuggler.desktop
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/plotjuggler.svg
         DESTINATION ${DESKTOP_ICON_DIR}  )
 
+######################## Main App, Libraries and Plugins ###################################
 
 add_subdirectory( 3rdparty/qwt/src )
-
-install(
-     TARGETS
-        plotjuggler_base
-     EXPORT export_plotjuggler_base
-     LIBRARY DESTINATION lib
-     ARCHIVE DESTINATION lib
-     RUNTIME DESTINATION bin
-     INCLUDES DESTINATION include)
-
-install(DIRECTORY plotjuggler_base/include/ DESTINATION include )
-
-set(CMAKECONFIG_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib/cmake/${PROJECT_NAME}")
-
-install(EXPORT export_plotjuggler_base 
-        FILE ${PROJECT_NAME}Targets.cmake
-        DESTINATION ${CMAKECONFIG_INSTALL_DIR} )
-
-export(PACKAGE ${PROJECT_NAME})
-
-include(CMakePackageConfigHelpers)
-
-set(PJ_INCLUDE_INSTALL_DIR include )
-
-configure_package_config_file(${PROJECT_NAME}Config.cmake.in
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-        INSTALL_DESTINATION ${CMAKECONFIG_INSTALL_DIR}
-        PATH_VARS CMAKE_INSTALL_PREFIX PJ_INCLUDE_INSTALL_DIR
-    )
-
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-        DESTINATION ${CMAKECONFIG_INSTALL_DIR}
-    )
-
-######################## Main App, Libraries amd Plugins ###################################
+add_subdirectory( 3rdparty/lz4 )
+add_subdirectory( 3rdparty/QCodeEditor )
+add_subdirectory( 3rdparty/color_widgets )
+add_subdirectory( 3rdparty/Qt-Advanced-Docking )
+add_subdirectory( 3rdparty/lua-5.4.3 )
 
 if (NOT WIN32)
   add_subdirectory( 3rdparty/backward-cpp )
 endif()
 
-add_subdirectory( 3rdparty/color_widgets )
-add_subdirectory( 3rdparty/Qt-Advanced-Docking )
-add_subdirectory( 3rdparty/lua-5.4.3 )
-
 add_subdirectory( plotjuggler_app )
 
 add_subdirectory( plotjuggler_plugins/DataLoadCSV )
-add_subdirectory( plotjuggler_plugins/DataLoadULog )
+add_subdirectory( plotjuggler_plugins/DataLoadMCAP )
 add_subdirectory( plotjuggler_plugins/DataLoadParquet )
+add_subdirectory( plotjuggler_plugins/DataLoadULog )
 
 add_subdirectory( plotjuggler_plugins/DataStreamSample )
 add_subdirectory( plotjuggler_plugins/DataStreamWebsocket )
@@ -278,3 +279,60 @@ add_subdirectory( plotjuggler_plugins/ToolboxFFT )
 add_subdirectory( plotjuggler_plugins/ToolboxLuaEditor )
 
 add_subdirectory( plotjuggler_plugins/ParserProtobuf )
+add_subdirectory( plotjuggler_plugins/ParserROS )
+
+# Install targets
+
+install(
+     TARGETS
+        plotjuggler_base
+     EXPORT ${PROJECT_NAME}Targets
+     LIBRARY DESTINATION lib
+     ARCHIVE DESTINATION lib
+     RUNTIME DESTINATION bin
+     INCLUDES DESTINATION include)
+
+install(DIRECTORY plotjuggler_base/include/ DESTINATION include )
+
+export(PACKAGE ${PROJECT_NAME})
+
+if(NOT COMPILING_WITH_AMENT AND NOT COMPILING_WITH_CATKIN)
+
+    include(GNUInstallDirs)
+
+    set(PJ_CMAKECONFIG_INSTALL_DIR ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
+
+    install(
+      EXPORT ${PROJECT_NAME}Targets
+      FILE ${PROJECT_NAME}Targets.cmake
+      DESTINATION ${PJ_CMAKECONFIG_INSTALL_DIR}
+    )
+
+    include(CMakePackageConfigHelpers)
+
+    set(PJ_INCLUDE_INSTALL_DIR include)
+
+    configure_package_config_file(
+      ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
+      ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+      INSTALL_DESTINATION ${PJ_CMAKECONFIG_INSTALL_DIR}
+      PATH_VARS PJ_INCLUDE_INSTALL_DIR
+    )
+
+    # This requires to declare the project version in the project() macro
+    write_basic_package_version_file(
+     "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+     VERSION ${PROJECT_VERSION}
+     COMPATIBILITY SameMajorVersion
+    )
+
+    message (STATUS "CMAKE_CURRENT_BINARY_DIR = ${CMAKE_CURRENT_BINARY_DIR}")
+
+    install(
+      FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+      DESTINATION ${PJ_CMAKECONFIG_INSTALL_DIR}
+    )
+
+endif()

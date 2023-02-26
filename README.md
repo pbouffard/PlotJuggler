@@ -1,13 +1,15 @@
 ![PlotJuggler](docs/plotjuggler3_banner.svg)
 
-
-[![CI](https://github.com/facontidavide/PlotJuggler/workflows/ros1/badge.svg)](https://github.com/facontidavide/PlotJuggler/actions?query=workflow%3Aros1)
-[![CI](https://github.com/facontidavide/PlotJuggler/workflows/ros2/badge.svg)](https://github.com/facontidavide/PlotJuggler/actions?query=workflow%3Aros2)
-[![Join the chat at https://gitter.im/PlotJuggler/Lobby](https://badges.gitter.im/PlotJuggler/Lobby.svg)](https://gitter.im/PlotJuggler/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
+[![windows](https://github.com/facontidavide/PlotJuggler/actions/workflows/windows.yaml/badge.svg)](https://github.com/facontidavide/PlotJuggler/actions/workflows/windows.yaml)
+[![ubuntu](https://github.com/facontidavide/PlotJuggler/actions/workflows/ubuntu.yaml/badge.svg)](https://github.com/facontidavide/PlotJuggler/actions/workflows/ubuntu.yaml)
+[![macos](https://github.com/facontidavide/PlotJuggler/actions/workflows/macos.yaml/badge.svg)](https://github.com/facontidavide/PlotJuggler/actions/workflows/macos.yaml)
+[![ROS1](https://github.com/facontidavide/PlotJuggler/workflows/ros1/badge.svg)](https://github.com/facontidavide/PlotJuggler/actions?query=workflow%3Aros1)
+[![ROS2](https://github.com/facontidavide/PlotJuggler/workflows/ros2/badge.svg)](https://github.com/facontidavide/PlotJuggler/actions?query=workflow%3Aros2)
 [![Tweet](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/intent/tweet?text=I%20use%20PlotJuggler%20and%20it%20is%20amazing%0D%0A&url=https://github.com/facontidavide/PlotJuggler&via=facontidavide&hashtags=dataviz,plotjuggler,GoROS,PX4)
+
 **Gold Sponsor**: [Greenzie](https://www.greenzie.com/)
 
-# PlotJuggler 3.4
+# PlotJuggler 3.6
 
 PlotJuggler is a tool to visualize time series that is **fast**, **powerful** and  **intuitive**.
 
@@ -75,22 +77,6 @@ If you want a simple example to learn how to write your own plugins, have a look
 
 ## Installation
 
-### Binary installers (with basic plugins)
-
-**Linux AppImage** (compatible with Ubuntu 18.04 or later): 
-[PlotJuggler-3.4.1-x86_64.AppImage](https://github.com/facontidavide/PlotJuggler/releases/download/3.4.1/PlotJuggler-3.4.1-x86_64.AppImage)
-
-**Windows Installer**: 
-[PlotJuggler-Windows-3.4.0-installer](https://github.com/facontidavide/PlotJuggler/releases/download/3.4.0/PlotJuggler-Windows-3.4.0-installer.exe)
-
-### For ROS User
-
-Install the debian packages using: 
-
-     sudo apt install ros-$ROS_DISTRO-plotjuggler-ros
-
-## How to build
-
 ### On Ubuntu
 
 On Ubuntu PlotJuggler dependencies can be fetched and executable built + installed by running the setup script:
@@ -99,51 +85,65 @@ On Ubuntu PlotJuggler dependencies can be fetched and executable built + install
 ./setup.sh
 ```
 
-### Other Platforms
+### Binary installers
 
-Clone the repository as usual:
+Note that these installers do __not__ include ROS plugins.
 
-    git clone https://github.com/facontidavide/PlotJuggler.git
+**Linux AppImage** (compatible with Ubuntu 20.04 or later): 
+[PlotJuggler-3.6.0-x86_64.AppImage](https://github.com/facontidavide/PlotJuggler/releases/download/3.6.0/PlotJuggler-3.6.0-x86_64.AppImage)
 
-The only binary dependency that you need installed in your system is Qt5. 
-On Ubuntu, the debians can be installed with the the command:
+**Windows Installer**: 
+[PlotJuggler-Windows-3.6.0-installer](https://github.com/facontidavide/PlotJuggler/releases/download/3.6.0/PlotJuggler-Windows-3.6.0-installer.exe)
 
-    sudo apt -y install qtbase5-dev libqt5svg5-dev libqt5websockets5-dev libqt5opengl5-dev libqt5x11extras5-dev libprotoc-dev
-    
-On Fedora:
+### Debian packages for ROS User
 
-    sudo dnf install qt5-qtbase-devel qt5-qtsvg-devel qt5-websockets-devel qt5-qtopendl-devel qt5-qtx11extras-devel
-    
-Then compile using cmake (qmake is NOT supported):
+Install the ROS packages with: 
 
-     mkdir build; cd build
-     cmake ..
-     make
-     sudo make install
- 
-Note: the plugins need to be installed in the same folder of the executable.
-
-## Note for ROS users
-
-To install PlotJuggler, just type:
-
-    sudo apt install ros-${ROS_DISTRO}-plotjuggler-ros
-       
+```
+sudo apt install ros-$ROS_DISTRO-plotjuggler-ros
+```
 To launch PlotJuggler on ROS, use the command:
 
-      rosrun plotjuggler plotjuggler
+```
+rosrun plotjuggler plotjuggler
+```
 
 or, if are using ROS2:
 
-       ros2 run plotjuggler plotjuggler
+```
+ros2 run plotjuggler plotjuggler
+```
 
-Since version 3.x, ROS plugins have been moved to a separate repository:
+ROS plugins are available in a separate repository: https://github.com/PlotJuggler/plotjuggler-ros-plugins
 
-https://github.com/PlotJuggler/plotjuggler-ros-plugins
+Refer to the instructions in that repository if you want to compile PJ and its ROS plugins from source.
 
-Refer to the instructions in the this repository if you want to compile PJ and its ROS plugins from source.
+## Install with Snap
 
-# If you like PlotJuggler, support it.
+This massive file will install a version of PlotJuggler that can work with both ROS1 and ROS2. 
+
+[![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-black.svg)](https://snapcraft.io/plotjuggler)
+
+```
+sudo snap install plotjuggler
+```
+
+When launching you have two options available:
+
+- `plotjuggler.ros` to load the ROS1 plugins
+- `plotjuggler.ros2` to load the ROS2 plugins
+
+In addition, the command `plotjuggler` is an alias to `plotjuggler.ros`.
+If you'd prefer to alias `plotjuggler.ros2` instead,
+you can do so with the command `sudo snap set plotjuggler ros-plugin-version=2`.
+Revert it simply replacing `2` with `1`.
+Note that this also affect the desktop launcher.
+
+## Compile from source
+
+You can find find the detailed instructions here: [COMPILE.md](COMPILE.md).
+
+# Sponsorship and commercial support
 
 PlotJuggler required a lot of work to be developed; my goal is to build the most 
 intuitive and powerfull tool to visualize data and timeseries.
@@ -151,9 +151,17 @@ intuitive and powerfull tool to visualize data and timeseries.
 If you find PlotJuggler useful, consider making a donation on [PayPal](https://www.paypal.me/facontidavide) or become a 
 [Github Sponsor](https://github.com/sponsors/facontidavide).
 
-If you use PlotJuggler at work, your company can support the development of those specific features they need.
+If you need to extend any of the functionalities of PlotJuggler to cover a specific 
+need or to parse your custom data formats, you can receive commercial
+support from the main author, [Davide Faconti](mailto:davide.faconti@gmail.com).
 
-[Contact me](https://www.plotjuggler.io/support) for more details.
+# License
+
+PlotJuggler is released under the [Mozilla Public License Version 2.0](LICENSE.md),
+which allows user to develop closed-source plugins.
+
+Please note that some third party dependencies (including Qt) use the
+**GNU Lesser General Public License**.
 
 # Stargazers
 
