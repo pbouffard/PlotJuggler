@@ -9,7 +9,7 @@
 
 **Gold Sponsor**: [Greenzie](https://www.greenzie.com/)
 
-# PlotJuggler 3.6
+# PlotJuggler 3.7
 
 PlotJuggler is a tool to visualize time series that is **fast**, **powerful** and  **intuitive**.
 
@@ -166,3 +166,9 @@ Please note that some third party dependencies (including Qt) use the
 # Stargazers
 
 [![Stargazers over time](https://starchart.cc/facontidavide/PlotJuggler.svg)](https://starchart.cc/facontidavide/PlotJuggler)
+
+# Contributors
+
+<a href="https://github.com/facontidavide/plotjuggler/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=facontidavide/plotjuggler" />
+</a>

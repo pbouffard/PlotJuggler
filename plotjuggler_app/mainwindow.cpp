@@ -623,7 +623,16 @@ QStringList MainWindow::initializePlugins(QString directory_name)
 
     QPluginLoader pluginLoader(pluginsDir.absoluteFilePath(filename), this);
 
-    QObject* plugin = pluginLoader.instance();
+    QObject* plugin;
+    try
+    {
+      plugin = pluginLoader.instance();
+    }
+    catch (std::runtime_error& err)
+    {
+      qDebug() << QString("%1: skipping, because it threw the following exception: %2").arg(filename).arg(err.what());
+      continue;
+    }
     if (plugin && dynamic_cast<PlotJugglerPlugin*>(plugin))
     {
       auto class_name = pluginLoader.metaData().value("className").toString();
@@ -3271,7 +3280,7 @@ void MainWindow::on_actionPreferences_triggered()
 
   QString theme = settings.value("Preferences::theme").toString();
 
-  if (theme != prev_style)
+  if (!theme.isEmpty() && theme != prev_style)
   {
     loadStyleSheet(tr(":/resources/stylesheet_%1.qss").arg(theme));
   }
